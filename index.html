@@ -636,7 +636,7 @@
       <p class="lead">${e ? `${esc(e.quien)} · ${hace(e.r.hora)}.` : "Nadie ha dicho en las últimas horas si el paso está abierto o cerrado."}</p>
       ${c ? factsHtml(c.motivo || "Todavía no se ha informado", c.plan, c.alternas, c.desde) : ""}
       ${aviso ? `<div class="pub"><a class="pubbtn" href="${esc(aviso.url)}" target="_blank" rel="noopener">Ver el aviso oficial ${flecha}</a></div>` : ""}
-      <div class="foot"><span class="metadata">${leido}</span><button type="button" class="action" data-recargar>Actualizar</button></div>
+      <div class="foot"><span class="metadata">${leido} · se actualiza sola</span></div>
       <p class="note">El último aviso oficial de cierre o reapertura vale hasta que haya otro. Un aviso de usuarios cuenta ${VIG_USUARIOS_H} horas, y un paso regulado oficial ${VIG_OFICIAL_H}. Una reapertura dicha solo por usuarios aparece como “posible” y hace falta que la reporten al menos ${MIN_USUARIOS}.</p>
     </div>
     <div class="sechead"><h2 class="sec">Últimos reportes</h2><span class="metadata">${lista.length} en 7 días</span></div>`;
@@ -694,7 +694,6 @@
   document.querySelector("aside").addEventListener("click", e => {
     const tab = e.target.closest(".tabs button"); if (tab) return showTab(tab.dataset.tab);
     if (e.target.closest("[data-close]")) return clearSel();
-    if (e.target.closest("[data-recargar]")) return cargarReportes();
     const emb = e.target.closest("[data-embed]");
     if (emb) { embeds.has(emb.dataset.embed) ? embeds.delete(emb.dataset.embed) : embeds.add(emb.dataset.embed); return renderReportes(); }
     if (e.target.closest("a")) return;
@@ -712,7 +711,10 @@
   map.on("click", () => { if (sel) clearSel(); });
 
   renderSectores(); renderGlosario(""); renderReportes();
+  // Se pide de nuevo cada minuto y, además, al volver a la pestaña: en los celulares el navegador
+  // frena los temporizadores de las pestañas en segundo plano.
   cargarReportes(); setInterval(cargarReportes, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") cargarReportes(); });
   window.addEventListener("resize", () => map.invalidateSize());
 })();
 </script>
