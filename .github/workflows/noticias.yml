@@ -1,0 +1,38 @@
+# Lee cada 5 minutos las noticias sobre la Ruta 32 en el Zurquí y actualiza data/noticias.js.
+# Corre en los servidores de GitHub (gratis en repositorios públicos), aunque la computadora esté apagada.
+# GitHub puede atrasar unos minutos las ejecuciones programadas cuando tiene mucha carga.
+name: Noticias de la Ruta 32
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: noticias
+  cancel-in-progress: false
+
+jobs:
+  leer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Leer noticias
+        id: leer
+        run: echo "resultado=$(python -X utf8 bot/nube_noticias.py | tail -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Publicar si hay noticias nuevas
+        if: steps.leer.outputs.resultado == 'cambios'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/noticias.js
+          git commit -m "Noticias de la Ruta 32"
+          git pull --rebase origin main
+          git push

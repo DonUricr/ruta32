@@ -1,12 +1,12 @@
 // Reportes de la ruta. Lo escribe lector/agregar_reportes.py: no editar a mano
 // (para corregir un reporte, volver a pasarlo por el script con el mismo id).
 //
-// fuente:  "usuarios" (rápido, sin confirmar) · "oficial" (MOPT, Conavi, Tránsito)
+// fuente:  "usuarios" (rápido, sin confirmar) · "oficial" (MOPT, Conavi, Tránsito) · "medios" (noticias que replican avisos)
 // tipo:    cierre · reapertura · regulado · derrumbe · accidente · clima · presa · varado · obras · normal
 // km / kmIni+kmFin: ubicación sobre la ruta; sin ninguno = todo el Zurquí (peaje – Cruce de Río Frío)
 // sentido: "1:2" (San José → Limón) · "2:1" (Limón → San José) · "ambos" · null
 // No se guardan nombres de quienes publican: solo el contenido del reporte y el enlace a la fuente.
-window.R32_ACTUALIZADO = "2026-11-17T19:32:46-06:00";
+window.R32_ACTUALIZADO = "2026-11-17T21:33:09-06:00";
 window.R32_REPORTES = [
   {"id": "fb-4403495433237770", "hora": "2026-11-16T12:33:00-06:00", "horaAprox": false, "fuente": "usuarios", "tipo": "presa", "sentido": null, "origen": "Grupo “Ruta 32 y su Estado Original”", "url": "https://www.facebook.com/groups/ruta32ysuestadooficial/posts/4403495433237770/", "original": "Un usuario que acaba de cruzar dice que el paso está libre, pero con mucha presa.", "simple": "Dos horas después de la reapertura, un usuario que acaba de cruzar el Zurquí cuenta que el paso está libre pero con mucha presa. Era de esperar después de un cierre de más de 12 horas."},
   {"id": "mopt-20261116-1018", "hora": "2026-11-16T10:18:00-06:00", "horaAprox": false, "fuente": "oficial", "tipo": "reapertura", "sentido": "ambos", "origen": "MOPT (Facebook)", "url": "https://www.facebook.com/MOPTcostarica/posts/pfbid026FhCyWdcwug1dxRidNBGXtP4uE7CYyEZLMe9jXpLsJcYcVueTxZEzsFkHhqGtX52l/", "original": "Tras finalizar las labores de limpieza en los kilómetros 27, 28 y 30 e procede a la apertura de la ruta 32.", "simple": "El MOPT anuncia la reapertura de la Ruta 32: ya terminó la limpieza del material que cayó anoche en los kilómetros 27, 28 y 30 (entre 7 y 10 km después del túnel, bajando hacia Guápiles). Se puede volver a pasar por el Zurquí en ambos sentidos; conviene ir con precaución en esa zona."},

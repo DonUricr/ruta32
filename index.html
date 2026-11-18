@@ -528,13 +528,15 @@
   }
   const hace = iso => `<span data-hace="${esc(iso)}">${haceTxt(iso)}</span>`;
   const oficial = r => r.fuente === "oficial";
+  const confiable = r => r.fuente === "oficial" || r.fuente === "medios"; // la prensa replica avisos oficiales
+  const quienDice = r => r.fuente === "oficial" ? "Fuente oficial" : r.fuente === "medios" ? `Según la prensa (${r.origen})` : "Según usuarios, sin confirmar";
   const reaperturaUsuarios = r => !oficial(r) && r.tipo === "reapertura";
   // Una reapertura que solo dicen los usuarios se muestra como "posible", y solo si la reportan varios.
   const visibles = () => REPORTES.filter(r => !(reaperturaUsuarios(r) && (r.confirmaciones || 1) < MIN_USUARIOS));
   const nombreTipo = r => reaperturaUsuarios(r) ? "Posible reapertura" : (TIPO[r.tipo] || r.tipo);
   // El último aviso oficial de cierre o reapertura vale hasta que llegue otro; lo demás vence con el tiempo.
   const FIRME = { cierre: 1, reapertura: 1, normal: 1 };
-  const vigente = r => (oficial(r) && r.tipo in FIRME) || edadH(r) < (oficial(r) ? VIG_OFICIAL_H : VIG_USUARIOS_H);
+  const vigente = r => (confiable(r) && r.tipo in FIRME) || edadH(r) < (confiable(r) ? VIG_OFICIAL_H : VIG_USUARIOS_H);
   const esPublicacion = r => /\/posts\/[A-Za-z0-9]+/.test(r.url);
   const tieneLugar = r => typeof r.km === "number" || typeof r.kmIni === "number";
   function lugar(r) {
@@ -547,10 +549,10 @@
   function estadoGeneral() {
     const lista = visibles().filter(r => r.tipo in ES_ESTADO && vigente(r));
     for (let i = 0; i < lista.length; i++) {
-      const r = lista[i], of = oficial(r), cierreDetras = lista.slice(i + 1).some(x => x.tipo === "cierre");
-      if (r.tipo === "cierre") return { clave: "cerrada", titulo: "Cerrada", r, quien: of ? "Fuente oficial" : "Según usuarios, sin confirmar" };
-      if (r.tipo === "regulado") return { clave: "regulado", titulo: "Paso regulado", r, quien: of ? "Fuente oficial" : "Según usuarios, sin confirmar" };
-      if (of) return { clave: "abierta", titulo: "Abierta", r, quien: "Fuente oficial" };
+      const r = lista[i], of = confiable(r), cierreDetras = lista.slice(i + 1).some(x => x.tipo === "cierre");
+      if (r.tipo === "cierre") return { clave: "cerrada", titulo: "Cerrada", r, quien: quienDice(r) };
+      if (r.tipo === "regulado") return { clave: "regulado", titulo: "Paso regulado", r, quien: quienDice(r) };
+      if (of) return { clave: "abierta", titulo: "Abierta", r, quien: quienDice(r) };
       if (r.tipo === "normal" && !cierreDetras) return { clave: "abierta", titulo: "Abierta", r, quien: "Según usuarios, sin confirmar" };
       if ((r.confirmaciones || 1) < MIN_USUARIOS) continue; // un solo "ya pasé" no alcanza para hablar de reapertura
       return { clave: "posible", titulo: "Posible reapertura", r, quien: `${r.confirmaciones} usuarios lo reportan; falta la confirmación oficial` };
@@ -563,7 +565,7 @@
     const episodio = [];
     for (const r of visibles()) { if (r.tipo === "reapertura" && (oficial(r) || (r.confirmaciones || 1) >= MIN_USUARIOS)) break; episodio.push(r); }
     const cierres = episodio.filter(r => r.tipo === "cierre" || r.motivo || r.plan || r.alternas);
-    const primero = k => { for (const grupo of [cierres.filter(oficial), cierres.filter(r => !oficial(r))]) { const r = grupo.find(x => x[k]); if (r) return r[k]; } return null; };
+    const primero = k => { for (const grupo of [cierres.filter(oficial), cierres.filter(r => r.fuente === "medios"), cierres.filter(r => !confiable(r))]) { const r = grupo.find(x => x[k]); if (r) return r[k]; } return null; };
     const soloCierres = episodio.filter(r => r.tipo === "cierre");
     return { motivo: primero("motivo"), plan: primero("plan"), alternas: primero("alternas"),
              desde: soloCierres.length ? soloCierres[soloCierres.length - 1] : null,
@@ -592,10 +594,12 @@
         ${esPublicacion(r) ? `<button type="button" class="linkbtn" data-embed="${esc(r.id)}" aria-expanded="${abierto}">${abierto ? "Ocultar la publicación" : "Mostrarla aquí"}</button>` : ""}</div>
         ${abierto ? `<iframe class="fbpost" title="Publicación del ${entidad} en Facebook" loading="lazy" src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(r.url)}&show_text=true&width=380"></iframe>` : ""}`;
     } else {
-      pie = `<div class="orig">${esc(r.origen)} · ${esc(r.original)} · <a href="${esc(r.url)}" target="_blank" rel="noopener">ver la conversación</a></div>`;
+      pie = r.fuente === "medios"
+        ? `<div class="orig">${esc(r.origen)}: “${esc(r.original)}” · <a href="${esc(r.url)}" target="_blank" rel="noopener">leer la nota</a></div>`
+        : `<div class="orig">${esc(r.origen)} · ${esc(r.original)} · <a href="${esc(r.url)}" target="_blank" rel="noopener">ver la conversación</a></div>`;
     }
     return `<div class="item${tono}${sel && sel.kind === "reporte" && sel.id === r.id ? " sel" : ""}" data-reporte="${esc(r.id)}">
-      <div class="row"><span class="cat">${dot(TCOLOR[r.tipo] || "#fff")}${esc(tipo)}</span><span class="metadata${of ? " src-oficial" : ""}">${of ? `Oficial · ${entidad}` : "Usuarios · sin confirmar"}</span></div>
+      <div class="row"><span class="cat">${dot(TCOLOR[r.tipo] || "#fff")}${esc(tipo)}</span><span class="metadata${of ? " src-oficial" : ""}">${of ? `Oficial · ${entidad}` : r.fuente === "medios" ? `Prensa · ${esc(r.origen)}` : "Usuarios · sin confirmar"}</span></div>
       <h3>${esc(tipo)} — ${lugar(r)}</h3>
       <div class="metadata">${meta}</div>
       <p>${esc(r.simple)}</p>
@@ -607,10 +611,10 @@
   function renderReportes() {
     const lista = visibles(), e = estadoGeneral();
     // Tras una reapertura oficial, lo reportado antes (el derrumbe que ya se limpió) deja de marcarse en el mapa.
-    const reabierta = lista.find(r => r.tipo === "reapertura" && oficial(r));
+    const reabierta = lista.find(r => r.tipo === "reapertura" && confiable(r));
     const enMapa = lista.filter(r => tieneLugar(r) && edadH(r) <= MAPA_H && !(reabierta && new Date(r.hora) < new Date(reabierta.hora)));
     if (!embedInicial && lista.length) { const p = lista.find(r => oficial(r) && esPublicacion(r)); if (p) embeds.add(p.id); embedInicial = true; }
-    const textoEstado = e ? `${e.titulo} · ${oficial(e.r) ? "oficial" : "sin confirmar"} · ${haceTxt(e.r.hora)}` : "Sin reportes recientes";
+    const textoEstado = e ? `${e.titulo} · ${oficial(e.r) ? "oficial" : e.r.fuente === "medios" ? "prensa" : "sin confirmar"} · ${haceTxt(e.r.hora)}` : "Sin reportes recientes";
     pill.className = "estado" + (e ? " " + e.clave : "");
     pill.textContent = textoEstado;
     // Si nada cambió, solo se actualizan los "hace X min": así las publicaciones incrustadas no se recargan cada minuto.
@@ -645,12 +649,22 @@
     paneR.innerHTML = h;
   }
   // data/reportes.js se vuelve a pedir cada minuto: si el lector lo actualizó, la página lo refleja sola.
-  function cargarReportes() {
-    const s = document.createElement("script");
-    s.src = "data/reportes.js?t=" + Date.now();
-    s.onload = () => { REPORTES = (window.R32_REPORTES || []).filter(r => new Date(r.hora) <= ahora()).sort((x, y) => new Date(y.hora) - new Date(x.hora)); renderReportes(); s.remove(); };
-    s.onerror = () => { renderReportes(); s.remove(); };
-    document.head.appendChild(s);
+  // Hay dos archivos: reportes.js (lo escribe el bot de la computadora) y noticias.js (lo escribe el
+  // lector de noticias de la nube). Se juntan por id; si un reporte está en ambos, gana el de reportes.js.
+  function pedir(src) {
+    return new Promise(listo => {
+      const s = document.createElement("script");
+      s.src = src + "?t=" + Date.now();
+      s.onload = s.onerror = () => { s.remove(); listo(); };
+      document.head.appendChild(s);
+    });
+  }
+  async function cargarReportes() {
+    await Promise.all([pedir("data/reportes.js"), pedir("data/noticias.js")]);
+    const porId = new Map();
+    for (const r of [...(window.R32_NOTICIAS || []), ...(window.R32_REPORTES || [])]) porId.set(r.id, r);
+    REPORTES = [...porId.values()].filter(r => new Date(r.hora) <= ahora()).sort((x, y) => new Date(y.hora) - new Date(x.hora));
+    renderReportes();
   }
   pill.addEventListener("click", () => showTab("reportes"));
 

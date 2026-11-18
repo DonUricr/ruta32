@@ -1,7 +1,21 @@
-# Solo se publica el sitio. El lector, sus instrucciones, los archivos temporales y la
-# configuración local se quedan en esta computadora.
+# Solo se publica el sitio y lo que necesita el lector de noticias de la nube. El lector de Facebook,
+# sus instrucciones, el perfil de Chrome, la clave de la API, el estado y los registros del bot se
+# quedan en esta computadora.
 /*
 !/.gitignore
 !/README.md
 !/index.html
 !/data/
+!/.github/
+
+!/lector/
+/lector/*
+!/lector/agregar_reportes.py
+!/lector/publicar.py
+
+!/bot/
+/bot/*
+!/bot/comun.py
+!/bot/reglas.py
+!/bot/noticias.py
+!/bot/nube_noticias.py

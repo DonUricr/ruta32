@@ -1,0 +1,254 @@
+[
+ {
+  "patron": "cruce de santo domingo / san miguel",
+  "nombre": "Cruce de Santo Domingo / San Miguel",
+  "km": 5.9
+ },
+ {
+  "patron": "cruce de san isidro de heredia",
+  "nombre": "Cruce de San Isidro de Heredia",
+  "km": 12.3
+ },
+ {
+  "patron": "rio hondura (salida del tunel)",
+  "nombre": "Río Hondura (salida del túnel)",
+  "km": 20.5
+ },
+ {
+  "patron": "puente saprissa (rio virilla)",
+  "nombre": "Puente Saprissa (río Virilla)",
+  "km": 3.4
+ },
+ {
+  "patron": "la recta del antiguo peaje",
+  "nombre": "El antiguo peaje",
+  "km": 17
+ },
+ {
+  "patron": "la vuelta de los sustos",
+  "nombre": "La Vuelta de los Sustos",
+  "km": 24.8
+ },
+ {
+  "patron": "la vuelta del chupadero",
+  "nombre": "El Chupadero",
+  "km": 34.1
+ },
+ {
+  "patron": "la marina / rio blanco",
+  "nombre": "La Marina / Río Blanco",
+  "km": 56
+ },
+ {
+  "patron": "vuelta de los sustos",
+  "nombre": "Vuelta de los Sustos",
+  "km": 24.8
+ },
+ {
+  "patron": "puente del rio sucio",
+  "nombre": "Puente del Río Sucio",
+  "km": 39.3
+ },
+ {
+  "patron": "peaje de san isidro",
+  "nombre": "El peaje",
+  "km": 14.2
+ },
+ {
+  "patron": "curva de los sustos",
+  "nombre": "La Vuelta de los Sustos",
+  "km": 24.8
+ },
+ {
+  "patron": "la vuelta del susto",
+  "nombre": "La Vuelta de los Sustos",
+  "km": 24.8
+ },
+ {
+  "patron": "puente del saprissa",
+  "nombre": "Puente del Saprissa",
+  "km": 3.4
+ },
+ {
+  "patron": "cruce de sarapiqui",
+  "nombre": "El Cruce",
+  "km": 49.5
+ },
+ {
+  "patron": "cruce de roberto’s",
+  "nombre": "El Cruce",
+  "km": 49.5
+ },
+ {
+  "patron": "cruce de san luis",
+  "nombre": "Cruce de San Luis",
+  "km": 10
+ },
+ {
+  "patron": "quebrada gonzalez",
+  "nombre": "Quebrada González",
+  "km": 41.6
+ },
+ {
+  "patron": "cruce de rio frio",
+  "nombre": "Cruce de Río Frío",
+  "km": 49.5
+ },
+ {
+  "patron": "rio toro amarillo",
+  "nombre": "Río Toro Amarillo",
+  "km": 59.2
+ },
+ {
+  "patron": "el descanso largo",
+  "nombre": "Descanso Largo",
+  "km": 30.3
+ },
+ {
+  "patron": "los guardaparques",
+  "nombre": "Quebrada González",
+  "km": 41.6
+ },
+ {
+  "patron": "peaje del zurqui",
+  "nombre": "Peaje del Zurquí",
+  "km": 14.2
+ },
+ {
+  "patron": "el antiguo peaje",
+  "nombre": "El antiguo peaje",
+  "km": 17
+ },
+ {
+  "patron": "puente del sucio",
+  "nombre": "El Sucio",
+  "km": 39.3
+ },
+ {
+  "patron": "puente saprissa",
+  "nombre": "Puente Saprissa (río Virilla)",
+  "km": 3.4
+ },
+ {
+  "patron": "descanso largo",
+  "nombre": "Descanso Largo",
+  "km": 30.3
+ },
+ {
+  "patron": "el mariposario",
+  "nombre": "El mariposario",
+  "km": 42.6
+ },
+ {
+  "patron": "rio costa rica",
+  "nombre": "Río Costa Rica",
+  "km": 54.1
+ },
+ {
+  "patron": "la roca del 31",
+  "nombre": "El 31",
+  "km": 31
+ },
+ {
+  "patron": "antiguo peaje",
+  "nombre": "Antiguo peaje",
+  "km": 17
+ },
+ {
+  "patron": "el teleferico",
+  "nombre": "El Teleférico",
+  "km": 44.6
+ },
+ {
+  "patron": "la parte alta",
+  "nombre": "La parte alta",
+  "kmIni": 17,
+  "kmFin": 25.6
+ },
+ {
+  "patron": "la parte baja",
+  "nombre": "La parte baja",
+  "kmIni": 39.3,
+  "kmFin": 49.5
+ },
+ {
+  "patron": "el chupadero",
+  "nombre": "El Chupadero",
+  "km": 34.1
+ },
+ {
+  "patron": "las ventanas",
+  "nombre": "Ventanas",
+  "km": 22.7
+ },
+ {
+  "patron": "kilometro 28",
+  "nombre": "El 28",
+  "km": 28
+ },
+ {
+  "patron": "kilometro 31",
+  "nombre": "El 31",
+  "km": 31
+ },
+ {
+  "patron": "kilometro 33",
+  "nombre": "El 33",
+  "km": 33
+ },
+ {
+  "patron": "kilometro 39",
+  "nombre": "El 39",
+  "km": 38.9
+ },
+ {
+  "patron": "rio hondura",
+  "nombre": "Río Hondura (salida del túnel)",
+  "km": 20.5
+ },
+ {
+  "patron": "peaje viejo",
+  "nombre": "El antiguo peaje",
+  "km": 17
+ },
+ {
+  "patron": "rio zurqui",
+  "nombre": "Río Zurquí",
+  "km": 18.9
+ },
+ {
+  "patron": "la ventana",
+  "nombre": "Ventanas",
+  "km": 22.7
+ },
+ {
+  "patron": "los sustos",
+  "nombre": "La Vuelta de los Sustos",
+  "km": 24.8
+ },
+ {
+  "patron": "el virilla",
+  "nombre": "Puente del Saprissa",
+  "km": 3.4
+ },
+ {
+  "patron": "rio sucio",
+  "nombre": "El Sucio",
+  "km": 39.3
+ },
+ {
+  "patron": "ventanas",
+  "nombre": "Ventanas",
+  "km": 22.7
+ },
+ {
+  "patron": "el sucio",
+  "nombre": "El Sucio",
+  "km": 39.3
+ },
+ {
+  "patron": "corinto",
+  "nombre": "Corinto",
+  "km": 50.9
+ }
+]
