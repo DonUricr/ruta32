@@ -1,0 +1,7 @@
+# Solo se publica el sitio. El lector, sus instrucciones, los archivos temporales y la
+# configuración local se quedan en esta computadora.
+/*
+!/.gitignore
+!/README.md
+!/index.html
+!/data/

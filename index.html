@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruta 32 · Mapa del Zurquí</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Libre+Caslon+Text&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* Composición: el mapa es el medio protagonista; a su lado, una columna editorial blanca y plana.
+     La serif gruesa se reserva para declaraciones (el estado del paso) y títulos de sección; una sola
+     banda durazno y un único ámbar para la acción. Sin sombras ni píldoras: esquinas de 5 px. */
+  :root {
+    --canvas: #ffffff; --surface: #fff9f1; --ink: #171717; --heading: #12122c; --muted: #5d5d6b;
+    --rule: rgba(23, 23, 23, .2); --peach: #fcd2ba; --amber: #f5a623; --on-color: #171717; --on-color-heading: #12122c;
+    --lemon: #ffeeb3; --mint: #a9e5c6; --rose: #e7b2ad; --sky: #a8dcea;
+    --ok: #c9efda; --alert: #f8c9a0; /* verde suave = abierta · anaranjado = cerrada */
+    --bajo: #3aa58f; --medio: #f5a623; --alto: #ee7f3b; --critico: #bd4355; --tunel: #2d9cdb;
+    --font-display: "Fraunces", "Millik", Georgia, serif;
+    --font-body: "DM Sans", "Moderat", Inter, Arial, sans-serif;
+    --font-action: "Libre Caslon Text", Georgia, serif;
+    --radius: 5px; --gutter: 28px;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --canvas: #12122c; --surface: #1c1c3d; --ink: #fff9f1; --heading: #fff9f1; --muted: #b7b4c8; --rule: rgba(255, 249, 241, .26); color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --canvas: #12122c; --surface: #1c1c3d; --ink: #fff9f1; --heading: #fff9f1; --muted: #b7b4c8; --rule: rgba(255, 249, 241, .26); color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--canvas); color: var(--ink); font: 400 16px/1.625 var(--font-body); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  /* ── encabezado: tira de navegación sin cajas */
+  header { display: flex; align-items: center; gap: 18px 28px; flex-wrap: wrap; padding: 14px var(--gutter); min-height: 76px; border-bottom: 1px dashed var(--rule); }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 18px; line-height: 22px; }
+  .brand .shield { display: grid; place-items: center; width: 36px; height: 36px; border: 1.5px solid var(--ink); border-radius: var(--radius); font: 800 17px/1 var(--font-display); letter-spacing: -.02em; }
+  .brand b { font-weight: 700; }
+  .brand span.sub { color: var(--muted); }
+  .tools { margin-left: auto; display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; }
+  .estado { border: 1px solid var(--ink); border-radius: var(--radius); background: var(--canvas); padding: 9px 14px; font-size: 12px; line-height: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .estado.cerrada { background: var(--alert); color: var(--on-color); border-color: var(--on-color); }
+  .estado.abierta { background: var(--ok); color: var(--on-color); border-color: var(--on-color); }
+  .estado.regulado, .estado.posible { background: var(--lemon); color: var(--on-color); border-color: var(--on-color); }
+  /* campo y botón unidos, como un solo rectángulo */
+  .kmjump { display: flex; align-items: center; }
+  .kmjump label { font-size: 15px; margin-right: 12px; }
+  .kmjump input { width: 86px; height: 44px; padding: 0 12px; background: var(--canvas); border: 1px solid var(--ink); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); outline-offset: -3px; }
+  .action { height: 44px; padding: 0 20px; background: var(--amber); color: #000; border: 1px solid var(--ink); border-radius: var(--radius); font: 400 16px/19px var(--font-action); transition: border-color .2s ease-out; }
+  .kmjump .action { border-left: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+  .temas { display: flex; gap: 8px; }
+  .temas button { width: 21px; height: 21px; padding: 0; border-radius: 50%; border: 1px dotted var(--ink); }
+  .temas [data-theme-set="light"] { background: #ffffff; }
+  .temas [data-theme-set="dark"] { background: #12122c; }
+  .temas [aria-pressed="true"] { border-style: solid; box-shadow: 0 0 0 2px var(--canvas), 0 0 0 3px var(--ink); }
+
+  /* ── cuerpo */
+  main { flex: 1; display: flex; min-height: 0; }
+  #mapwrap { flex: 1; min-width: 0; position: relative; display: flex; }
+  #map { flex: 1; min-width: 0; background: #e9e6df; }
+  #waze { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; z-index: 1100; background: #fff; }
+  #wazeoff { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1101; }
+  aside { width: 440px; max-width: 100%; display: flex; flex-direction: column; min-height: 0; background: var(--canvas); border-left: 1px dashed var(--rule); }
+
+  .tabs { display: flex; gap: 28px; padding: 0 var(--gutter); border-bottom: 1px dashed var(--rule); }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 20px 0 16px; color: var(--muted); font-size: 14px; line-height: 17px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .pane { flex: 1; overflow-y: auto; padding: 0 var(--gutter) 48px; display: none; }
+  .pane.on { display: block; }
+
+  /* ── tipografía de la columna */
+  .sechead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 34px 0 6px; }
+  .sec { margin: 0; font: 700 26px/1.02 var(--font-display); letter-spacing: -.025em; color: var(--heading); font-variation-settings: "opsz" 30; text-wrap: balance; }
+  .cat { margin: 0; font-size: 12px; line-height: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink); }
+  .metadata { font-size: 12px; line-height: 17px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ink); margin-right: 8px; vertical-align: -1px; }
+
+  /* ── banda durazno: el estado del paso como declaración */
+  .band { margin: 0 calc(-1 * var(--gutter)); padding: 26px var(--gutter) 28px; background: var(--peach); color: var(--on-color); }
+  .band .cat { color: var(--on-color); }
+  .band .statement { margin: 10px 0 8px; font: 800 46px/.97 var(--font-display); letter-spacing: -.8px; color: var(--on-color-heading); font-variation-settings: "opsz" 30; text-wrap: balance; }
+  .band .statement.quiet { font-size: 32px; }
+  .band .lead { margin: 0; font-size: 16px; line-height: 1.5; }
+  .band .foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
+  .band .metadata { color: var(--on-color); opacity: .78; }
+  .band .note { margin: 14px 0 0; font-size: 13px; line-height: 1.5; opacity: .78; }
+  .band :focus-visible { outline-color: var(--on-color); }
+
+  /* ── tarjeta editorial: plana, sin panel ni sombra; separador punteado */
+  .item { position: relative; padding: 20px 14px 22px; margin: 0 -14px; border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; }
+  .item + .item::before { content: ""; position: absolute; top: -1px; left: 14px; right: 14px; border-top: 1px dashed var(--rule); }
+  .item .row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+  .item h3 { margin: 11px 0 8px; font: 600 20px/1.2 var(--font-body); letter-spacing: -.03em; color: var(--heading); text-wrap: balance; }
+  .item:hover h3 { text-decoration: underline; text-underline-offset: 3px; }
+  .item p { margin: 10px 0 0; font-size: 15px; line-height: 1.6; }
+  .item .also { font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+  .item .orig { margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .item.sel { background: var(--surface); border-color: var(--ink); }
+  .item.sel::before, .item.sel + .item::before { display: none; }
+  .src-oficial { color: var(--ink); font-weight: 700; }
+  a { color: var(--ink); text-underline-offset: 3px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .tag { display: inline-block; padding: 3px 9px; border: 1px solid var(--rule); border-radius: var(--radius); font-size: 13px; line-height: 18px; font-weight: 500; cursor: pointer; transition: border-color .2s ease-out; }
+  .tag:hover { border-color: var(--ink); background: var(--surface); }
+
+  /* ── el estado tiñe la banda; los avisos oficiales son cajas destacadas */
+  .band.b-cerrada { background: var(--alert); }
+  .band.b-abierta { background: var(--ok); }
+  .band.b-regulado, .band.b-posible { background: var(--lemon); }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; margin: 18px 0 0; font-size: 15px; line-height: 1.5; }
+  .facts dt { padding-top: 4px; font-size: 12px; line-height: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .facts dd { margin: 0; min-width: 0; }
+  .facts ul { margin: 0; padding: 0; list-style: none; }
+  .pub { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; margin-top: 16px; }
+  .pubbtn { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; color: #171717; border: 1px solid #171717; border-radius: var(--radius); font-size: 13px; line-height: 17px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; text-decoration: none; transition: background .2s ease-out, color .2s ease-out; }
+  .pubbtn:hover { background: #171717; color: #fff; }
+  .pubbtn .arrow { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid currentColor; border-radius: 50%; font-size: 13px; line-height: 1; }
+  .linkbtn { padding: 0; background: none; border: 0; color: inherit; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; }
+  .fbpost { display: block; width: 100%; height: 560px; margin-top: 14px; background: #fff; border: 1px solid #171717; border-radius: var(--radius); }
+  .item.oficial { margin-block: 14px; padding: 20px 18px 22px; background: var(--surface); border-color: var(--ink); }
+  .item.oficial::before, .item.oficial + .item::before { display: none; }
+  .item.oficial.tinted { color: var(--on-color); border-color: var(--on-color); }
+  .item.oficial.tinted h3 { color: var(--on-color-heading); }
+  .item.oficial.tinted .cat, .item.oficial.tinted .metadata, .item.oficial.tinted .orig { color: var(--on-color); }
+  .item.oficial.tinted .metadata, .item.oficial.tinted .orig { opacity: .8; }
+  .item.oficial.tinted .dot { border-color: var(--on-color); }
+  .item.oficial.of-cierre { background: var(--alert); }
+  .item.oficial.of-abre { background: var(--ok); }
+  .item.oficial.of-regulado { background: var(--lemon); }
+  .item.oficial.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .band .pubbtn:focus-visible, .item.oficial.tinted :focus-visible { outline-color: var(--on-color); }
+
+  /* ── ficha de detalle */
+  .detail { position: relative; margin: 28px 0 0; padding: 24px 24px 26px; background: var(--surface); border: 1px solid var(--ink); border-radius: var(--radius); }
+  .detail h2 { margin: 0 46px 8px 0; font: 700 28px/1.04 var(--font-display); letter-spacing: -.025em; color: var(--heading); font-variation-settings: "opsz" 30; text-wrap: balance; }
+  .detail .body { margin: 14px 0 0; font-size: 15px; line-height: 1.6; }
+  .detail dl { margin: 0; }
+  .detail dt { margin-top: 20px; font-size: 12px; line-height: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .detail dt .alt { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .detail dd { margin: 6px 0 0; font-size: 15px; line-height: 1.6; }
+  .detail .src { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--rule); font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .detail .src a { display: block; margin-top: 5px; }
+  .round { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; background: var(--canvas); color: var(--ink); border: 1px solid var(--ink); border-radius: 50%; font-size: 20px; line-height: 1; transition: transform .8s var(--ease), background .8s var(--ease), color .8s var(--ease); }
+  .round:hover { background: var(--ink); color: var(--canvas); transform: scale(1.12); }
+  .detail .round { position: absolute; top: 18px; right: 18px; }
+
+  .search { width: 100%; height: 52px; margin-top: 28px; padding: 0 18px; background: var(--canvas); border: 1px solid var(--ink); border-radius: var(--radius); outline-offset: -3px; }
+  .search::placeholder, .kmjump input::placeholder { color: var(--muted); opacity: 1; }
+  .empty { padding: 24px 0; color: var(--muted); font-size: 15px; }
+  .aviso-legal { margin: 0; padding: 12px var(--gutter); border-top: 1px dashed var(--rule); font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+  .aviso-legal a { color: var(--ink); }
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; padding: 14px var(--gutter); border-top: 1px dashed var(--rule); font-size: 12px; line-height: 17px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .legend i { display: inline-block; width: 16px; height: 6px; border-radius: 2px; vertical-align: 1px; margin-right: 6px; }
+
+  /* ── controles sobre el mapa (el mapa siempre es claro: colores fijos) */
+  .leaflet-container { font: inherit; }
+  .leaflet-touch .leaflet-bar, .leaflet-bar { border: 0; box-shadow: none; }
+  .leaflet-touch .leaflet-bar a, .leaflet-bar a { width: 42px; height: 42px; line-height: 40px; margin-bottom: 8px; background: #fff; color: #171717; border: 1px solid #171717 !important; border-radius: 50% !important; font-size: 19px; transition: transform .8s var(--ease), background .8s var(--ease), color .8s var(--ease); }
+  .leaflet-bar a:hover { background: #171717; color: #fff; transform: scale(1.12); }
+  .leaflet-touch .leaflet-control-layers, .leaflet-control-layers { background: #fff; color: #171717; border: 1px solid #171717; border-radius: var(--radius); box-shadow: none; font-size: 14px; }
+  .leaflet-control-layers:not(.leaflet-control-layers-expanded) { border-radius: 50%; overflow: hidden; }
+  .leaflet-touch .leaflet-control-layers-toggle, .leaflet-control-layers-toggle { width: 40px; height: 40px; background-size: 20px 20px; }
+  .leaflet-control-layers-expanded { padding: 12px 16px; }
+  .leaflet-tooltip { background: #fff; color: #171717; border: 1px solid #171717; border-radius: var(--radius); box-shadow: none; padding: 3px 8px; font: 600 12px/16px var(--font-body); }
+  .leaflet-tooltip::before { display: none; }
+  .leaflet-control-scale-line { border-color: #171717; background: rgba(255, 255, 255, .85); color: #171717; font: 500 11px/1.3 var(--font-body); }
+  .kmtick { color: #171717; font: 700 10.5px/12px var(--font-body); text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .kmtick::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #fff; border: 1px solid #171717; margin-right: 3px; vertical-align: 1px; }
+  .repmark { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #171717; outline: 3px solid rgba(255, 255, 255, .9); color: #171717; font: 800 14px/21px var(--font-body); text-align: center; cursor: pointer; }
+  .pinmark { width: 18px; height: 18px; border-radius: 50%; background: #f5a623; border: 2px solid #171717; outline: 3px solid rgba(255, 255, 255, .9); }
+  .lanes { width: 236px; padding: 14px; background: #fff; color: #171717; border: 1px solid #171717; border-radius: var(--radius); font-size: 13px; line-height: 1.45; }
+  .lanes .cat { color: #171717; margin-bottom: 10px; }
+  .lanes .opts { display: flex; flex-direction: column; gap: 6px; }
+  .lanes button { text-align: left; padding: 8px 11px; background: #fff; color: #171717; border: 1px solid #171717; border-radius: var(--radius); font-size: 13px; line-height: 17px; transition: background .2s ease-out, color .2s ease-out; }
+  .lanes button:hover, .lanes button.on { background: #171717; color: #fff; }
+  .lanes .note { margin-top: 10px; color: #5d5d6b; }
+  .lanes .key { display: inline-block; width: 16px; height: 5px; border-radius: 2px; vertical-align: 2px; margin-right: 6px; }
+  .lanes hr { border: 0; border-top: 1px dashed rgba(23, 23, 23, .2); margin: 12px 0; }
+  .lanes :focus-visible { outline-color: #171717; }
+  .lanes .lanes-toggle { display: none; }
+
+  @media (max-width: 1240px) { .brand span.sub { display: none; } }
+  @media (max-width: 860px) {
+    :root { --gutter: 16px; }
+    /* en el teléfono la página entera se desplaza: mapa arriba, columna debajo */
+    html, body { height: auto; }
+    body { display: block; }
+    header { padding-block: 12px; gap: 12px; min-height: 0; }
+    .kmjump label { display: none; }
+    .tools { display: contents; }
+    .brand { order: 1; }
+    .temas { order: 2; margin-left: auto; }
+    .estado { order: 3; flex: 1 1 auto; text-align: left; }
+    .kmjump { order: 4; }
+    main { display: block; }
+    #mapwrap { height: 58vh; min-height: 320px; }
+    aside { display: block; width: 100%; border-left: 0; border-top: 1px dashed var(--rule); }
+    .pane { overflow: visible; }
+    .band .statement { font-size: 38px; }
+    .lanes { width: auto; max-width: 216px; padding: 0; border: 0; background: none; }
+    .lanes .lanes-toggle { display: block; margin-left: auto; }
+    .lanes .lanes-body { margin-top: 8px; padding: 12px; background: #fff; border: 1px solid #171717; border-radius: var(--radius); }
+    .lanes:not([data-open]) .lanes-body { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="shield">32</span><span><b>Ruta 32</b> Zurquí</span><span class="sub">· el paso de montaña, explicado</span></div>
+  <div class="tools">
+    <button type="button" class="estado" id="estado" title="Ver los reportes"></button>
+    <form class="kmjump" id="kmform">
+      <label for="kminput">¿Dónde queda el km…?</label>
+      <input id="kminput" type="number" min="0" max="65" step="0.1" placeholder="28" aria-label="Kilómetro">
+      <button type="submit" class="action">Ir</button>
+    </form>
+    <div class="temas" role="group" aria-label="Tema de color">
+      <button type="button" data-theme-set="light" aria-label="Tema claro" aria-pressed="false"></button>
+      <button type="button" data-theme-set="dark" aria-label="Tema oscuro" aria-pressed="false"></button>
+    </div>
+  </div>
+</header>
+<main>
+  <div id="mapwrap">
+    <div id="map"></div>
+    <iframe id="waze" title="Tráfico en vivo (Waze)" hidden></iframe>
+    <button type="button" id="wazeoff" class="action" hidden>Volver al mapa de sectores</button>
+  </div>
+  <aside>
+    <div class="tabs">
+      <button type="button" data-tab="reportes" class="on">Reportes</button>
+      <button type="button" data-tab="sectores">Sectores</button>
+      <button type="button" data-tab="glosario">Glosario</button>
+    </div>
+    <div class="pane on" id="pane-reportes"></div>
+    <div class="pane" id="pane-sectores"></div>
+    <div class="pane" id="pane-glosario"></div>
+    <p class="aviso-legal">Proyecto independiente: no es del MOPT ni de ninguna institución. Resume lo que reportan los usuarios y los avisos oficiales; antes de viajar, confirmá en la <a href="https://www.facebook.com/MOPTcostarica/" target="_blank" rel="noopener">página oficial del MOPT</a>.</p>
+    <div class="legend">
+      <span><i style="background:var(--bajo)"></i>bajo</span>
+      <span><i style="background:var(--medio)"></i>medio</span>
+      <span><i style="background:var(--alto)"></i>alto</span>
+      <span><i style="background:var(--critico)"></i>crítico</span>
+      <span><i style="background:var(--tunel)"></i>túnel</span>
+      <span>· riesgo histórico de derrumbes</span>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/ruta.js"></script>
+<script src="data/sectores.js"></script>
+<script>
+(function () {
+  const RUTA = window.R32_RUTA, TRAMOS = window.R32_TRAMOS, PUNTOS = window.R32_PUNTOS,
+        GLOS = window.R32_GLOSARIO, FUENTES = window.R32_FUENTES;
+  const TINTA = "#171717";
+  const COLOR = { bajo: "#3aa58f", medio: "#f5a623", alto: "#ee7f3b", critico: "#bd4355", tunel: "#2d9cdb" };
+  const RIESGO = { bajo: "Riesgo bajo", medio: "Riesgo medio", alto: "Riesgo alto", critico: "Riesgo crítico", tunel: "Túnel" };
+  const CONF = { alta: "confirmado", media: "ubicación aproximada", baja: "por confirmar con usuarios" };
+  const CONF_COLOR = { alta: "#a9e5c6", media: "#ffeeb3", baja: "#e7b2ad" };
+  const CAT = { lugar: "Lugares y sectores", carriles: "Carriles y sentidos", estado: "Estado de la vía", vehiculos: "Vehículos y gente", alterna: "Rutas alternas" };
+  const glosById = Object.fromEntries(GLOS.map(g => [g.id, g]));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const coma = n => String(n).replace(".", ",");
+  const fmtKm = k => "km " + coma(Math.round(k * 10) / 10);
+  const dot = c => `<i class="dot" style="background:${c}"></i>`;
+
+  // ── tema claro / oscuro (los dos puntos del encabezado); sin elección guardada manda el sistema
+  const root = document.documentElement;
+  function setTheme(t, guardar) {
+    if (t) root.dataset.theme = t; else delete root.dataset.theme;
+    document.querySelectorAll("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)));
+    if (guardar) try { localStorage.setItem("r32-tema", t); } catch (e) { /* sin almacenamiento: el tema vale para esta visita */ }
+  }
+  let temaGuardado = null;
+  try { temaGuardado = localStorage.getItem("r32-tema"); } catch (e) { /* idem */ }
+  setTheme(temaGuardado === "dark" || temaGuardado === "light" ? temaGuardado : null, false);
+  document.querySelector(".temas").addEventListener("click", e => { const b = e.target.closest("[data-theme-set]"); if (b) setTheme(b.dataset.themeSet, true); });
+
+  // ── geometría: km -> coordenada, y recorte de la ruta por rango de km
+  function at(km) {
+    if (km <= RUTA[0][2]) return [RUTA[0][0], RUTA[0][1]];
+    for (let i = 1; i < RUTA.length; i++) {
+      if (km <= RUTA[i][2]) {
+        const a = RUTA[i - 1], b = RUTA[i], t = (km - a[2]) / Math.max(1e-9, b[2] - a[2]);
+        return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+      }
+    }
+    const l = RUTA[RUTA.length - 1]; return [l[0], l[1]];
+  }
+  function slice(k0, k1) {
+    const pts = [at(k0)];
+    for (const p of RUTA) if (p[2] > k0 && p[2] < k1) pts.push([p[0], p[1]]);
+    pts.push(at(k1));
+    return pts;
+  }
+
+  // ── mapa: "Calles" es la capa principal
+  const map = L.map("map", { zoomControl: true, preferCanvas: false });
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" });
+  const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "© OpenTopoMap (CC-BY-SA), © OpenStreetMap" });
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Imágenes © Esri" });
+  osm.addTo(map);
+  L.control.layers({ "Calles": osm, "Relieve": topo, "Satélite": sat }, null, { position: "topleft" }).addTo(map);
+  L.control.scale({ imperial: false }).addTo(map);
+
+  const tramoLayers = {}, puntoLayers = {};
+  L.polyline(RUTA.map(p => [p[0], p[1]]), { color: TINTA, weight: 10, opacity: .9, interactive: false }).addTo(map);
+  for (const t of TRAMOS) {
+    const pl = L.polyline(slice(t.kmIni, t.kmFin), { color: COLOR[t.riesgo], weight: 6, opacity: 1, lineCap: "butt" }).addTo(map);
+    pl.bindTooltip(`${esc(t.nombre)} · ${fmtKm(t.kmIni)}–${coma(t.kmFin)}`, { sticky: true });
+    pl.on("click", e => { L.DomEvent.stopPropagation(e); select("tramo", t.id, false); });
+    tramoLayers[t.id] = pl;
+  }
+  // marcas de kilómetro
+  const kmLayer = L.layerGroup();
+  for (let k = 1; k <= 62; k++) {
+    L.marker(at(k), { interactive: false, keyboard: false, icon: L.divIcon({ className: "kmtick", html: String(k), iconSize: [30, 12], iconAnchor: [4, 6] }) }).addTo(kmLayer);
+  }
+  const syncKm = () => { map.getZoom() >= 13 ? kmLayer.addTo(map) : kmLayer.remove(); };
+  map.on("zoomend", syncKm);
+
+  const PSTYLE = { ref: { fill: "#ffffff", r: 6 }, coloquial: { fill: "#f5a623", r: 8 }, critico: { fill: "#bd4355", r: 7 }, rio: { fill: "#2d9cdb", r: 5 } };
+  for (const p of PUNTOS) {
+    const s = PSTYLE[p.tipo];
+    const m = L.circleMarker(at(p.km), { radius: s.r, color: TINTA, weight: 1.5, fillColor: s.fill, fillOpacity: 1 }).addTo(map);
+    m.bindTooltip(esc(p.nombre), { direction: "right", offset: [8, 0], permanent: p.tipo === "coloquial" || ["p-tunel", "p-peaje", "p-riosucio", "p-cruce"].includes(p.id) });
+    m.on("click", e => { L.DomEvent.stopPropagation(e); select("punto", p.id, false); });
+    puntoLayers[p.id] = m;
+  }
+  const pin = L.marker([0, 0], { icon: L.divIcon({ className: "", html: '<div class="pinmark"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }) });
+  const hl = L.polyline([], { color: TINTA, weight: 18, opacity: .2, interactive: false }).addTo(map);
+
+  // ── capa de carriles: dónde hay dos carriles para cada sentido (1 = San José, 2 = Limón)
+  const CARRILES = window.R32_CARRILES || [];
+  const laneLayer = L.layerGroup().addTo(map);
+  let laneMode = null;
+  const LANE_TXT = { "1:2": "hacia Limón (1:2)", "2:1": "hacia San José (2:1)" };
+  const LANE_COLOR = { dos: "#2d9cdb", uno: "#f29191", nada: "#171717" };
+  const laneCtl = L.control({ position: "topright" });
+  laneCtl.onAdd = () => {
+    const d = L.DomUtil.create("div", "lanes");
+    // en pantallas angostas el cuadro arranca plegado detrás de un botón, para no tapar el mapa
+    d.innerHTML = `<button type="button" class="lanes-toggle" data-plegar aria-expanded="false">Carriles y tráfico</button>
+      <div class="lanes-body"><p class="cat">¿Dónde hay dos carriles?</p>
+      <div class="opts">
+        <button type="button" data-lane="1:2">San José → Limón (1:2)</button>
+        <button type="button" data-lane="2:1">Limón → San José (2:1)</button>
+      </div><div class="note" hidden></div>
+      <hr><div class="opts"><button type="button" data-waze>Ver tráfico en vivo (Waze)</button></div></div>`;
+    L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    d.addEventListener("click", e => {
+      const pl = e.target.closest("[data-plegar]");
+      if (pl) { const abierto = d.toggleAttribute("data-open"); pl.setAttribute("aria-expanded", String(abierto)); return; }
+      if (e.target.closest("[data-waze]")) return verWaze(true);
+      const b = e.target.closest("[data-lane]"); if (b) setLane(laneMode === b.dataset.lane ? null : b.dataset.lane);
+    });
+    return d;
+  };
+  laneCtl.addTo(map);
+  // Tráfico en vivo: mapa embebido oficial de Waze (gratis, sin clave), centrado donde esté mirando el usuario.
+  const waze = document.getElementById("waze"), wazeOff = document.getElementById("wazeoff");
+  function verWaze(on) {
+    if (on) {
+      const c = map.getCenter(), z = Math.max(8, Math.min(17, map.getZoom()));
+      waze.src = `https://embed.waze.com/iframe?zoom=${z}&lat=${c.lat.toFixed(5)}&lon=${c.lng.toFixed(5)}&ct=livemap`;
+    } else waze.removeAttribute("src");
+    waze.hidden = wazeOff.hidden = !on;
+  }
+  wazeOff.addEventListener("click", () => verWaze(false));
+  function setLane(mode) {
+    laneMode = mode; laneLayer.clearLayers();
+    const box = laneCtl.getContainer(), note = box.querySelector(".note");
+    box.querySelectorAll("[data-lane]").forEach(b => b.classList.toggle("on", b.dataset.lane === mode));
+    for (const t of Object.values(tramoLayers)) t.setStyle({ opacity: mode ? .3 : 1 });
+    note.hidden = !mode;
+    if (!mode) return;
+    let conDato = 0, total = 0, dos = 0;
+    for (const c of CARRILES) {
+      const len = c.kmFin - c.kmIni; total += len;
+      const pts = slice(c.kmIni, c.kmFin);
+      let style, txt;
+      if (c.dos === null) { style = { color: LANE_COLOR.nada, weight: 4, opacity: .5, dashArray: "3 8" }; txt = "Sin dato todavía"; }
+      else if (c.dos === mode) { conDato += len; dos += len; style = { color: LANE_COLOR.dos, weight: 9, opacity: 1 }; txt = "Dos carriles " + LANE_TXT[mode]; }
+      else { conDato += len; style = { color: LANE_COLOR.uno, weight: 5, opacity: 1 }; txt = "Un solo carril " + LANE_TXT[mode]; }
+      L.polyline(pts, style).bindTooltip(`${txt} · ${fmtKm(c.kmIni)}–${coma(c.kmFin)}<br>${esc(c.nota)}`, { sticky: true }).addTo(laneLayer);
+    }
+    for (const m of Object.values(puntoLayers)) m.bringToFront();
+    const f = n => coma(n.toFixed(1));
+    note.innerHTML = `<span class="key" style="background:${LANE_COLOR.dos}"></span>dos carriles ${LANE_TXT[mode]}: ${f(dos)} km<br>
+      <span class="key" style="background:${LANE_COLOR.uno}"></span>un solo carril en ese sentido<br>
+      <span class="key" style="background:${LANE_COLOR.nada};opacity:.5"></span>sin dato<br>
+      Levantado: ${f(conDato)} de ${f(total)} km de la zona de tres carriles (túnel – Río Sucio).`;
+    map.flyToBounds(L.latLngBounds(slice(20.4, 39.2)), { padding: [30, 30], duration: .6 });
+  }
+
+  const zurqui = L.latLngBounds(slice(13, 50.5));
+  // El contenedor puede medir 0 px mientras cargan los estilos: se encuadra de nuevo al terminar la carga.
+  const fit = () => { map.invalidateSize(); map.fitBounds(zurqui, { padding: [20, 20] }); syncKm(); };
+  fit();
+  if (document.readyState !== "complete") window.addEventListener("load", fit, { once: true });
+
+  // ── columna
+  const paneS = document.getElementById("pane-sectores"), paneG = document.getElementById("pane-glosario");
+  let sel = null;
+
+  const fuentesHtml = ids => ids && ids.length
+    ? `<div class="src">Fuentes${ids.map(i => FUENTES[i] ? `<a href="${FUENTES[i].u}" target="_blank" rel="noopener">${esc(FUENTES[i].t)}</a>` : "").join("")}</div>` : "";
+  const termTags = ids => (ids || []).filter(i => glosById[i]).map(i => `<span class="tag" data-term="${i}">${esc(glosById[i].termino)}</span>`).join("");
+  const termDefs = ids => (ids || []).filter(i => glosById[i]).map(i => { const g = glosById[i];
+    return `<dt>“${esc(g.termino)}”${g.variantes.length ? ` <span class="alt">· ${esc(g.variantes.join(", "))}</span>` : ""}</dt><dd>${esc(g.definicion)}</dd>`; }).join("");
+  const cerrar = `<button type="button" class="round" data-close aria-label="Cerrar">×</button>`;
+
+  function detailHtml() {
+    if (!sel) return "";
+    if (sel.kind === "tramo") {
+      const t = TRAMOS.find(x => x.id === sel.id);
+      const dentro = PUNTOS.filter(p => p.km >= t.kmIni - 0.05 && p.km <= t.kmFin + 0.05);
+      return `<div class="detail">${cerrar}
+        <p class="cat">${dot(COLOR[t.riesgo])}${RIESGO[t.riesgo]}</p>
+        <h2 style="margin-top:12px">${esc(t.nombre)}</h2>
+        <div class="metadata">${fmtKm(t.kmIni)} a ${fmtKm(t.kmFin)}</div>
+        <p class="body">${esc(t.descripcion)}</p>
+        <dl><dt>Carriles</dt><dd>${esc(t.carriles)}</dd>
+        ${dentro.length ? `<dt>Puntos en este tramo</dt><dd><div class="tags" style="margin-top:8px">${dentro.map(p => `<span class="tag" data-punto="${p.id}">${esc(p.nombre)} · ${fmtKm(p.km)}</span>`).join("")}</div></dd>` : ""}
+        ${termDefs(t.terminos)}</dl>
+        ${fuentesHtml(t.fuentes)}</div>`;
+    }
+    if (sel.kind === "punto") {
+      const p = PUNTOS.find(x => x.id === sel.id);
+      return `<div class="detail">${cerrar}
+        <p class="cat">${dot(CONF_COLOR[p.confianza])}${CONF[p.confianza]}</p>
+        <h2 style="margin-top:12px">${esc(p.nombre)}</h2>
+        <div class="metadata">${fmtKm(p.km)} · ${distTunel(p.km)}</div>
+        <p class="body">${esc(p.descripcion)}</p>
+        ${p.terminos.length ? `<dl>${termDefs(p.terminos)}</dl>` : ""}
+        ${fuentesHtml(p.fuentes)}</div>`;
+    }
+    if (sel.kind === "km") {
+      const t = TRAMOS.find(x => sel.km >= x.kmIni && sel.km <= x.kmFin);
+      const cerca = PUNTOS.map(p => ({ p, d: Math.abs(p.km - sel.km) })).sort((a, b) => a.d - b.d).slice(0, 3);
+      return `<div class="detail">${cerrar}
+        <p class="cat">Buscaste un kilómetro</p>
+        <h2 style="margin-top:12px">Kilómetro ${coma(sel.km)}</h2>
+        <div class="metadata">${distTunel(sel.km)}</div>
+        <dl>${t ? `<dt>Tramo</dt><dd><div class="tags" style="margin-top:8px"><span class="tag" data-tramo="${t.id}">${esc(t.nombre)}</span></div></dd>` : ""}
+        <dt>Referencias más cercanas</dt><dd><div class="tags" style="margin-top:8px">${cerca.map(c => `<span class="tag" data-punto="${c.p.id}">${esc(c.p.nombre)} · a ${coma(c.d.toFixed(1))} km</span>`).join("")}</div></dd></dl></div>`;
+    }
+    return "";
+  }
+  function distTunel(km) {
+    if (km < 19.8) return `${coma((19.8 - km).toFixed(1))} km antes del túnel (lado San José)`;
+    if (km <= 20.4) return "dentro del túnel Zurquí";
+    return `${coma((km - 20.4).toFixed(1))} km después del túnel (lado Caribe)`;
+  }
+
+  function renderSectores() {
+    let h = detailHtml();
+    h += `<div class="sechead"><h2 class="sec">Tramos</h2><span class="metadata">San José → Guápiles</span></div>`;
+    for (const t of TRAMOS) {
+      h += `<div class="item${sel && sel.kind === "tramo" && sel.id === t.id ? " sel" : ""}" data-tramo="${t.id}">
+        <div class="row"><span class="cat">${dot(COLOR[t.riesgo])}${RIESGO[t.riesgo]}</span><span class="metadata">${fmtKm(t.kmIni)} – ${coma(t.kmFin)}</span></div>
+        <h3>${esc(t.nombre)}</h3>
+        <div class="metadata">${esc(t.carriles)}</div>
+        <div class="tags">${termTags(t.terminos)}</div></div>`;
+    }
+    paneS.innerHTML = h;
+  }
+  function renderGlosario(q) {
+    const input = paneG.querySelector("input");
+    const query = q !== undefined ? q : (input ? input.value : "");
+    const nq = norm(query.trim());
+    let h = "";
+    let n = 0;
+    for (const cat of Object.keys(CAT)) {
+      const items = GLOS.filter(g => g.cat === cat && (!nq || norm([g.termino, ...g.variantes, g.definicion].join(" ")).includes(nq)));
+      if (!items.length) continue;
+      h += `<div class="sechead"><h2 class="sec">${CAT[cat]}</h2><span class="metadata">${items.length} ${items.length === 1 ? "término" : "términos"}</span></div>`;
+      for (const g of items) {
+        n++;
+        const loc = g.km !== undefined ? fmtKm(g.km) : g.kmIni !== undefined ? `${fmtKm(g.kmIni)}–${coma(g.kmFin)}` : "sin ubicación fija";
+        h += `<div class="item${sel && sel.kind === "term" && sel.id === g.id ? " sel" : ""}" data-term="${g.id}">
+          <div class="row"><span class="cat">${dot(CONF_COLOR[g.confianza])}${CONF[g.confianza]}</span><span class="metadata">${loc}</span></div>
+          <h3>“${esc(g.termino)}”</h3>
+          ${g.variantes.length ? `<div class="also">También: ${esc(g.variantes.join(" · "))}</div>` : ""}
+          <p>${esc(g.definicion)}</p></div>`;
+      }
+    }
+    if (!n) h = `<div class="empty">Ningún término coincide con “${esc(query)}”. Probá con otra palabra o con el número del kilómetro.</div>`;
+    if (!input) {
+      paneG.innerHTML = `<input class="search" id="buscar-glosario" type="search" placeholder="Buscá un término: descanso, 1-2, paso regulado…" aria-label="Buscar en el glosario"><div id="glist"></div>`;
+      paneG.querySelector("input").addEventListener("input", e => renderGlosario(e.target.value));
+    }
+    paneG.querySelector("#glist").innerHTML = h;
+  }
+
+  // ── reportes: estado general, columna de últimos reportes y marcadores en el mapa
+  let REPORTES = [];
+  const TIPO = { cierre: "Cierre total", reapertura: "Reapertura", regulado: "Paso regulado", derrumbe: "Caída de material", accidente: "Accidente", varado: "Vehículo varado", presa: "Presa", obras: "Obras en la vía", clima: "Lluvia / neblina", normal: "Paso normal" };
+  const TCOLOR = { cierre: "#bd4355", reapertura: "#6fc3b7", normal: "#6fc3b7", regulado: "#f5a623", derrumbe: "#eea87c", accidente: "#f29191", varado: "#cad0f7", presa: "#f2f091", obras: "#2d9cdb", clima: "#a8dcea" };
+  const SENT = { "1:2": "San José → Limón (1:2)", "2:1": "Limón → San José (2:1)", ambos: "ambos sentidos" };
+  const ES_ESTADO = { cierre: 1, reapertura: 1, normal: 1, regulado: 1 };
+  const VIG_OFICIAL_H = 18, VIG_USUARIOS_H = 6; // pasado este tiempo un reporte deja de definir el estado general
+  const MAPA_H = 12;                             // los reportes más viejos que esto ya no se marcan en el mapa
+  const MIN_USUARIOS = 3;                        // una reapertura dicha solo por usuarios cuenta si la reportan al menos estos
+  // "?ahora=2026-11-16T09:00:00-06:00" muestra la página como estaba a esa hora (para revisar o probar).
+  const AHORA_FIJA = Date.parse(new URLSearchParams(location.search).get("ahora") || "") || null;
+  const ahora = () => AHORA_FIJA || Date.now();
+  const paneR = document.getElementById("pane-reportes"), pill = document.getElementById("estado");
+  const repLayer = L.layerGroup().addTo(map);
+  const embeds = new Set(); let embedInicial = false; // publicaciones oficiales que se muestran incrustadas
+  const edadH = r => (ahora() - new Date(r.hora)) / 3600e3;
+  const fmtFecha = iso => new Date(iso).toLocaleString("es-CR", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "America/Costa_Rica" });
+  const fmtHora = r => (r.horaAprox ? "aprox. " : "") + fmtFecha(r.hora);
+  function haceTxt(iso) {
+    const m = Math.max(0, Math.round((ahora() - new Date(iso)) / 60000));
+    return m < 60 ? `hace ${m} min` : m < 2880 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} días`;
+  }
+  const hace = iso => `<span data-hace="${esc(iso)}">${haceTxt(iso)}</span>`;
+  const oficial = r => r.fuente === "oficial";
+  const reaperturaUsuarios = r => !oficial(r) && r.tipo === "reapertura";
+  // Una reapertura que solo dicen los usuarios se muestra como "posible", y solo si la reportan varios.
+  const visibles = () => REPORTES.filter(r => !(reaperturaUsuarios(r) && (r.confirmaciones || 1) < MIN_USUARIOS));
+  const nombreTipo = r => reaperturaUsuarios(r) ? "Posible reapertura" : (TIPO[r.tipo] || r.tipo);
+  // El último aviso oficial de cierre o reapertura vale hasta que llegue otro; lo demás vence con el tiempo.
+  const FIRME = { cierre: 1, reapertura: 1, normal: 1 };
+  const vigente = r => (oficial(r) && r.tipo in FIRME) || edadH(r) < (oficial(r) ? VIG_OFICIAL_H : VIG_USUARIOS_H);
+  const esPublicacion = r => /\/posts\/[A-Za-z0-9]+/.test(r.url);
+  const tieneLugar = r => typeof r.km === "number" || typeof r.kmIni === "number";
+  function lugar(r) {
+    if (typeof r.km === "number") return fmtKm(r.km);
+    if (typeof r.kmIni === "number") return `${fmtKm(r.kmIni)}–${coma(r.kmFin)}`;
+    return r.tipo in ES_ESTADO || r.tipo === "clima" ? "todo el Zurquí" : "Zurquí, sin ubicación precisa";
+  }
+  // Estado general: manda el reporte más reciente y vigente que hable de abierto, cerrado o regulado.
+  // Lo que dicen los usuarios sobre una reapertura nunca pasa de "posible" hasta que lo confirme una fuente oficial.
+  function estadoGeneral() {
+    const lista = visibles().filter(r => r.tipo in ES_ESTADO && vigente(r));
+    for (let i = 0; i < lista.length; i++) {
+      const r = lista[i], of = oficial(r), cierreDetras = lista.slice(i + 1).some(x => x.tipo === "cierre");
+      if (r.tipo === "cierre") return { clave: "cerrada", titulo: "Cerrada", r, quien: of ? "Fuente oficial" : "Según usuarios, sin confirmar" };
+      if (r.tipo === "regulado") return { clave: "regulado", titulo: "Paso regulado", r, quien: of ? "Fuente oficial" : "Según usuarios, sin confirmar" };
+      if (of) return { clave: "abierta", titulo: "Abierta", r, quien: "Fuente oficial" };
+      if (r.tipo === "normal" && !cierreDetras) return { clave: "abierta", titulo: "Abierta", r, quien: "Según usuarios, sin confirmar" };
+      if ((r.confirmaciones || 1) < MIN_USUARIOS) continue; // un solo "ya pasé" no alcanza para hablar de reapertura
+      return { clave: "posible", titulo: "Posible reapertura", r, quien: `${r.confirmaciones} usuarios lo reportan; falta la confirmación oficial` };
+    }
+    return null;
+  }
+  // Datos del cierre vigente: motivo, plan anunciado y rutas alternas. Salen de los reportes de cierre
+  // posteriores a la última reapertura; se prefiere lo que diga la fuente oficial.
+  function datosCierre() {
+    const episodio = [];
+    for (const r of visibles()) { if (r.tipo === "reapertura" && (oficial(r) || (r.confirmaciones || 1) >= MIN_USUARIOS)) break; episodio.push(r); }
+    const cierres = episodio.filter(r => r.tipo === "cierre" || r.motivo || r.plan || r.alternas);
+    const primero = k => { for (const grupo of [cierres.filter(oficial), cierres.filter(r => !oficial(r))]) { const r = grupo.find(x => x[k]); if (r) return r[k]; } return null; };
+    const soloCierres = episodio.filter(r => r.tipo === "cierre");
+    return { motivo: primero("motivo"), plan: primero("plan"), alternas: primero("alternas"),
+             desde: soloCierres.length ? soloCierres[soloCierres.length - 1] : null,
+             publicacion: cierres.filter(oficial).find(esPublicacion) || null };
+  }
+  const flecha = `<span class="arrow" aria-hidden="true">→</span>`;
+  const factsHtml = (motivo, plan, alternas, desde) => {
+    const filas = [];
+    if (motivo) filas.push(`<dt>Motivo</dt><dd>${esc(motivo)}</dd>`);
+    if (plan) filas.push(`<dt>Qué sigue</dt><dd>${esc(plan)}</dd>`);
+    if (alternas) filas.push(`<dt>Rutas alternas</dt><dd><ul>${alternas.map(a => `<li><b>${esc(a.via)}</b>, para ${esc(a.para)}</li>`).join("")}</ul></dd>`);
+    if (desde) filas.push(`<dt>Cerrada desde</dt><dd>${fmtHora(desde)} (${hace(desde.hora)})</dd>`);
+    return filas.length ? `<dl class="facts">${filas.join("")}</dl>` : "";
+  };
+
+  function tarjeta(r) {
+    const of = oficial(r), tipo = nombreTipo(r);
+    const tono = !of ? "" : r.tipo === "cierre" ? " oficial tinted of-cierre" : r.tipo === "reapertura" || r.tipo === "normal" ? " oficial tinted of-abre" : r.tipo === "regulado" ? " oficial tinted of-regulado" : " oficial";
+    const meta = [fmtHora(r), hace(r.hora), r.sentido ? SENT[r.sentido] : "", r.confirmaciones > 1 ? `${r.confirmaciones} usuarios lo reportan` : ""].filter(Boolean).join(" · ");
+    const entidad = esc(r.origen.replace(/\s*\(.*$/, ""));
+    let pie;
+    if (of) {
+      const abierto = embeds.has(r.id) && esPublicacion(r);
+      pie = `<div class="orig">Texto del aviso: “${esc(r.original)}”</div>
+        <div class="pub"><a class="pubbtn" href="${esc(r.url)}" target="_blank" rel="noopener">Ver la publicación del ${entidad} ${flecha}</a>
+        ${esPublicacion(r) ? `<button type="button" class="linkbtn" data-embed="${esc(r.id)}" aria-expanded="${abierto}">${abierto ? "Ocultar la publicación" : "Mostrarla aquí"}</button>` : ""}</div>
+        ${abierto ? `<iframe class="fbpost" title="Publicación del ${entidad} en Facebook" loading="lazy" src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(r.url)}&show_text=true&width=380"></iframe>` : ""}`;
+    } else {
+      pie = `<div class="orig">${esc(r.origen)} · ${esc(r.original)} · <a href="${esc(r.url)}" target="_blank" rel="noopener">ver la conversación</a></div>`;
+    }
+    return `<div class="item${tono}${sel && sel.kind === "reporte" && sel.id === r.id ? " sel" : ""}" data-reporte="${esc(r.id)}">
+      <div class="row"><span class="cat">${dot(TCOLOR[r.tipo] || "#fff")}${esc(tipo)}</span><span class="metadata${of ? " src-oficial" : ""}">${of ? `Oficial · ${entidad}` : "Usuarios · sin confirmar"}</span></div>
+      <h3>${esc(tipo)} — ${lugar(r)}</h3>
+      <div class="metadata">${meta}</div>
+      <p>${esc(r.simple)}</p>
+      ${factsHtml(r.motivo, r.plan, r.alternas, null)}
+      ${pie}</div>`;
+  }
+
+  let firma = "";
+  function renderReportes() {
+    const lista = visibles(), e = estadoGeneral();
+    // Tras una reapertura oficial, lo reportado antes (el derrumbe que ya se limpió) deja de marcarse en el mapa.
+    const reabierta = lista.find(r => r.tipo === "reapertura" && oficial(r));
+    const enMapa = lista.filter(r => tieneLugar(r) && edadH(r) <= MAPA_H && !(reabierta && new Date(r.hora) < new Date(reabierta.hora)));
+    if (!embedInicial && lista.length) { const p = lista.find(r => oficial(r) && esPublicacion(r)); if (p) embeds.add(p.id); embedInicial = true; }
+    const textoEstado = e ? `${e.titulo} · ${oficial(e.r) ? "oficial" : "sin confirmar"} · ${haceTxt(e.r.hora)}` : "Sin reportes recientes";
+    pill.className = "estado" + (e ? " " + e.clave : "");
+    pill.textContent = textoEstado;
+    // Si nada cambió, solo se actualizan los "hace X min": así las publicaciones incrustadas no se recargan cada minuto.
+    const nueva = [JSON.stringify(lista), e ? e.clave + e.r.id : "", sel && sel.kind === "reporte" ? sel.id : "", [...embeds].join(), enMapa.map(r => r.id).join(), window.R32_ACTUALIZADO].join("|");
+    if (nueva === firma) { paneR.querySelectorAll("[data-hace]").forEach(s => { s.textContent = haceTxt(s.dataset.hace); }); return; }
+    firma = nueva;
+
+    repLayer.clearLayers();
+    for (const r of enMapa) {
+      const km = typeof r.km === "number" ? r.km : (r.kmIni + r.kmFin) / 2;
+      if (typeof r.kmIni === "number") L.polyline(slice(r.kmIni, r.kmFin), { color: TCOLOR[r.tipo] || "#fff", weight: 18, opacity: .45, interactive: false }).addTo(repLayer);
+      L.marker(at(km), { icon: L.divIcon({ className: "", html: `<div class="repmark" style="background:${TCOLOR[r.tipo] || "#fff"}">!</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
+        .bindTooltip(`${esc(nombreTipo(r))} · ${haceTxt(r.hora)}`, { direction: "top", offset: [0, -12] })
+        .on("click", ev => { L.DomEvent.stopPropagation(ev); select("reporte", r.id, false); }).addTo(repLayer);
+    }
+
+    const c = e && e.clave === "cerrada" ? datosCierre() : null;
+    const aviso = e && oficial(e.r) ? e.r : c && c.publicacion;
+    const leido = AHORA_FIJA ? `Vista del ${fmtFecha(AHORA_FIJA)}` : window.R32_ACTUALIZADO ? `Última lectura ${hace(window.R32_ACTUALIZADO)}` : "Sin lecturas todavía";
+    let h = `<div class="band b-${e ? e.clave : "nada"}">
+      <p class="cat">Estado del paso</p>
+      <p class="statement${e ? "" : " quiet"}">${e ? e.titulo : "Sin reportes recientes"}</p>
+      <p class="lead">${e ? `${esc(e.quien)} · ${hace(e.r.hora)}.` : "Nadie ha dicho en las últimas horas si el paso está abierto o cerrado."}</p>
+      ${c ? factsHtml(c.motivo || "Todavía no se ha informado", c.plan, c.alternas, c.desde) : ""}
+      ${aviso ? `<div class="pub"><a class="pubbtn" href="${esc(aviso.url)}" target="_blank" rel="noopener">Ver el aviso oficial ${flecha}</a></div>` : ""}
+      <div class="foot"><span class="metadata">${leido}</span><button type="button" class="action" data-recargar>Actualizar</button></div>
+      <p class="note">El último aviso oficial de cierre o reapertura vale hasta que haya otro. Un aviso de usuarios cuenta ${VIG_USUARIOS_H} horas, y un paso regulado oficial ${VIG_OFICIAL_H}. Una reapertura dicha solo por usuarios aparece como “posible” y hace falta que la reporten al menos ${MIN_USUARIOS}.</p>
+    </div>
+    <div class="sechead"><h2 class="sec">Últimos reportes</h2><span class="metadata">${lista.length} en 7 días</span></div>`;
+    if (!lista.length) h += `<div class="empty">Todavía no hay reportes cargados. Aparecerán aquí después de la próxima lectura de las fuentes.</div>`;
+    h += lista.map(tarjeta).join("");
+    paneR.innerHTML = h;
+  }
+  // data/reportes.js se vuelve a pedir cada minuto: si el lector lo actualizó, la página lo refleja sola.
+  function cargarReportes() {
+    const s = document.createElement("script");
+    s.src = "data/reportes.js?t=" + Date.now();
+    s.onload = () => { REPORTES = (window.R32_REPORTES || []).filter(r => new Date(r.hora) <= ahora()).sort((x, y) => new Date(y.hora) - new Date(x.hora)); renderReportes(); s.remove(); };
+    s.onerror = () => { renderReportes(); s.remove(); };
+    document.head.appendChild(s);
+  }
+  pill.addEventListener("click", () => showTab("reportes"));
+
+  function showTab(name) {
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+    document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === "pane-" + name));
+  }
+  function focusRange(k0, k1) {
+    const pts = slice(k0, k1); hl.setLatLngs(pts); pin.remove();
+    map.flyToBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 15, duration: .6 });
+  }
+  function focusKm(km) {
+    hl.setLatLngs([]); pin.setLatLng(at(km)).addTo(map);
+    map.flyTo(at(km), Math.max(map.getZoom(), 15), { duration: .6 });
+  }
+  function select(kind, id, fromList) {
+    if (kind === "tramo") {
+      const t = TRAMOS.find(x => x.id === id); sel = { kind, id }; focusRange(t.kmIni, t.kmFin);
+      showTab("sectores"); renderSectores(); paneS.scrollTop = 0;
+    } else if (kind === "punto") {
+      const p = PUNTOS.find(x => x.id === id); sel = { kind, id }; focusKm(p.km);
+      showTab("sectores"); renderSectores(); paneS.scrollTop = 0;
+    } else if (kind === "km") {
+      sel = { kind, km: id }; focusKm(id); showTab("sectores"); renderSectores(); paneS.scrollTop = 0;
+    } else if (kind === "reporte") {
+      const r = REPORTES.find(x => x.id === id); sel = { kind, id };
+      if (typeof r.km === "number") focusKm(r.km); else focusRange(typeof r.kmIni === "number" ? r.kmIni : 14.2, typeof r.kmFin === "number" ? r.kmFin : 49.5);
+      showTab("reportes"); renderReportes();
+      const el = paneR.querySelector(".item.sel"); if (el && !fromList) el.scrollIntoView({ block: "center" });
+    } else if (kind === "term") {
+      const g = glosById[id]; sel = { kind, id };
+      if (g.km !== undefined) focusKm(g.km); else if (g.kmIni !== undefined) focusRange(g.kmIni, g.kmFin); else { hl.setLatLngs([]); pin.remove(); }
+      showTab("glosario");
+      if (!fromList) { const inp = paneG.querySelector("input"); if (inp) inp.value = ""; }
+      renderGlosario();
+      const el = paneG.querySelector(`[data-term="${id}"]`); if (el && !fromList) el.scrollIntoView({ block: "center" });
+    }
+  }
+  function clearSel() { sel = null; hl.setLatLngs([]); pin.remove(); renderSectores(); renderGlosario(); renderReportes(); }
+
+  document.querySelector("aside").addEventListener("click", e => {
+    const tab = e.target.closest(".tabs button"); if (tab) return showTab(tab.dataset.tab);
+    if (e.target.closest("[data-close]")) return clearSel();
+    if (e.target.closest("[data-recargar]")) return cargarReportes();
+    const emb = e.target.closest("[data-embed]");
+    if (emb) { embeds.has(emb.dataset.embed) ? embeds.delete(emb.dataset.embed) : embeds.add(emb.dataset.embed); return renderReportes(); }
+    if (e.target.closest("a")) return;
+    const el = e.target.closest("[data-term],[data-punto],[data-tramo],[data-reporte]"); if (!el) return;
+    if (el.dataset.reporte) return select("reporte", el.dataset.reporte, true);
+    if (el.dataset.term) select("term", el.dataset.term, !!el.closest("#glist"));
+    else if (el.dataset.punto) select("punto", el.dataset.punto, true);
+    else select("tramo", el.dataset.tramo, true);
+  });
+  document.getElementById("kmform").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = parseFloat(document.getElementById("kminput").value);
+    if (!isNaN(v) && v >= 0 && v <= 65) select("km", Math.round(v * 10) / 10);
+  });
+  map.on("click", () => { if (sel) clearSel(); });
+
+  renderSectores(); renderGlosario(""); renderReportes();
+  cargarReportes(); setInterval(cargarReportes, 60000);
+  window.addEventListener("resize", () => map.invalidateSize());
+})();
+</script>
+</body>
+</html>
