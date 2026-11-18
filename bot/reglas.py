@@ -271,6 +271,9 @@ def reportes_del_mopt(publicaciones):
     for p in publicaciones:
         if not p.get("texto") or not p.get("hora"):
             continue
+        # Con "hace 1 día" o más, Facebook ya no da la hora: el aviso es viejo y su hora sería inventada.
+        if (p.get("minutos") or 0) >= 1440:
+            continue
         dt = datetime.fromisoformat(p["hora"]).astimezone(CR)
         url = p["url"] if p.get("tieneEnlace") else URL_MOPT
         # el id sale del texto: la dirección y la hora que muestra Facebook cambian entre lecturas
